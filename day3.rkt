@@ -70,5 +70,21 @@
 ;; (println priorities)
 (define totalpriority (apply + priorities))
 (println totalpriority)
-    
-    
+;; part 2: need to get 3 line groupings
+;; split into groups of three with a new function
+(define (splitup in)
+  (if (empty? in) '()
+      (let ([firstgroup (take in 3)]
+            [rest (drop in 3)])
+        (cons firstgroup (splitup rest)))))
+(define groupings (splitup inlines))
+;;(println groupings)
+;; now let's more or less repeat our first half
+(define (badgepriority in)
+  (let ([group1 (string->list (car in))]
+        [group2 (string->list (cadr in))]
+        [group3 (string->list (caddr in))])
+    (apply + (map (lambda (x) (hash-ref valuetable x 0)) (set-intersect group1 group2 group3)))))
+(define grouppriorities (map badgepriority groupings))
+;; (println grouppriorities)
+(println (apply + grouppriorities))
