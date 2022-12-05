@@ -19,11 +19,6 @@
 ;;(println (string-split (car initialstate) #rx".{3}"))
 ;; split the initial state into a hash table of lists
 (define table (make-hash))
-;; split the first line of the state up as initial lists
-(for ([i (string-split (car initialstate) #rx".{3}")]) (hash-set! table (string-trim i) '()))
-;;(println "")
-;;(println "Should be an empty state table")
-;;(println table)
 ;; now we need to go line by line through our initial state
 ;; define a way to load a single line into the table
 (define (addstate line state)
@@ -47,15 +42,51 @@
     ;;(printf "Line: \"~a\"\n" (string->list line))
     ;;(println (split-line (string->list line)))
     (addstate line table)))
+;; strip blanks from the fronts of our lists
+(for ([key (hash-keys table)])
+  (let ([r (hash-ref table key)])
+    (hash-set! table key (reverse (let go ([l r] [output '()])
+      (cond
+        [(empty? l) output]
+        [else (let ([i (string-trim (car l))])
+                (if (string=? i "") (go (cdr l) output) (go (cdr l) (cons (car l) output))))]))))))
+(println (hash-keys table))
 (println "Table of positions")
-(printf "1: ~a\n" (hash-ref table "1"))
-(printf "2: ~a\n" (hash-ref table "2"))
-(printf "3: ~a\n" (hash-ref table "3"))
-(printf "4: ~a\n" (hash-ref table "4"))
-(printf "5: ~a\n" (hash-ref table "5"))
-(printf "6: ~a\n" (hash-ref table "6"))
-(printf "7: ~a\n" (hash-ref table "7"))
-(printf "8: ~a\n" (hash-ref table "8"))
-(printf "9: ~a\n" (hash-ref table "9"))
+(let go ([i 1])
+  (if (<= i (length (hash-keys table))) (begin (printf "~a: ~a\n" i (hash-ref table (number->string i))) (go (add1 i))) #f))
 ;; let's parse the movements
 ;; should be easier
+(define rawmoves (let getmoves ([in inputlines] [state '()] [discard #t])
+                       (cond
+                         [(empty? in) state]
+                         [(string-ci=? "" (car in)) (getmoves (cdr in) state #f)]
+                         [discard (getmoves (cdr in) state #t)]
+                         [else (getmoves (cdr in) (cons (car in) state) #f)])))
+;; need to flip our list now
+(define moves (reverse rawmoves))
+;; (for ([l moves]) (println l))
+;; for each line we want to grab follow the pattern of "move NUMBER from NUMBER to NUMBER"
+;; so we can split on spaces and then take item 1, 3, and 5
+(for ([move moves])
+  (let* ([movelist (string-split move " ")]
+         [amount (list-ref movelist 1)]
+         [numberamount (string->number amount)]
+         [from (list-ref movelist 3)]
+         [to (list-ref movelist 5)]
+         [get (hash-ref table from)]
+         [got (take get numberamount)]
+         [newget (drop get numberamount)]
+         [set (hash-ref table to)]
+         [newset (append got set)])
+    (begin
+      ;; lil print debug as a treat of course
+      (printf "Moving ~a from ~a to ~a\n" amount from to)
+      ;; take and drop!!!
+      (hash-set! table from newget)
+      (hash-set! table to newset))))
+(println "Table of positions")
+(let go ([i 1])
+  (if (<= i (length (hash-keys table))) (begin (printf "~a: ~a\n" i (hash-ref table (number->string i))) (go (add1 i))) #f))
+(printf "Part 1 result: ~a\n" (let go ([s ""] [i 1]) (if (> i (length (hash-keys table))) s (go (string-append s (substring (car (hash-ref table (number->string i))) 1 2)) (add1 i)))))
+;; funny enough part 2 was solved by an error in my initial attempt so I just modified this code
+;; if you want part 1, add a reverse on the take above on line 77
